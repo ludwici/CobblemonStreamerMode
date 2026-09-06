@@ -2,7 +2,7 @@ package com.ludwici.cobblemonstreamermode.client.twitch;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.client.Minecraft;
+import com.ludwici.cobblemonstreamermode.client.StreamerModeConfig;
 import net.minecraft.network.chat.Component;
 
 import java.net.URI;
@@ -15,6 +15,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class TwitchAuthManager {
 
@@ -28,33 +30,57 @@ public class TwitchAuthManager {
 
     private volatile String pendingUserCode;
     private volatile String pendingVerificationUri;
+    private volatile String authorizedChannelName;
     private volatile String lastError;
 
     private static final String CLIENT_ID = "3lsck8o6uuez43dqpu96zaycj7b5ra";
-    public static final String SCOPES = "user:read:chat chat:read channel:read:polls";
+    public static final String SCOPES = "chat:read";
     private static final HttpClient HTTP = HttpClient.newHttpClient();
-    private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "cobblemon-streamer-mode-twitch-auth");
+        thread.setDaemon(true);
+        return thread;
+    });
 
-    private volatile String pendingDeviceCode;
     private volatile boolean pollingActive = false;
 
     public static final TwitchAuthManager INSTANCE = new TwitchAuthManager();
 
-    public AuthStatus getAuthStatus() { return authStatus; }
-    public String getPendingUserCode() { return pendingUserCode; }
-    public String getPendingVerificationUri() { return pendingVerificationUri; }
-    public String getLastError() { return lastError; }
+    public AuthStatus getAuthStatus() {
+        return authStatus;
+    }
+
+    public String getPendingUserCode() {
+        return pendingUserCode;
+    }
+
+    public String getPendingVerificationUri() {
+        return pendingVerificationUri;
+    }
+
+    public String getAuthorizedChannelName() {
+        return authorizedChannelName;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
 
     public void refreshStatusFromDisk() {
-        TwitchCredentials creds = TwitchCredentials.load();
-        authStatus = (creds != null && creds.refreshToken != null)
-                ? AuthStatus.VALID
-                : AuthStatus.NOT_AUTHORIZED;
+        TwitchCredentials creds = TwitchCredentialStore.load();
+        boolean hasRefreshToken = creds != null && creds.refreshToken != null && !creds.refreshToken.isBlank();
+        authStatus = hasRefreshToken ? AuthStatus.VALID : AuthStatus.NOT_AUTHORIZED;
+        authorizedChannelName = hasRefreshToken ? creds.channelName : null;
     }
 
     public void beginDeviceFlow() {
+        lastError = null;
+        pendingUserCode = null;
+        pendingVerificationUri = null;
+        authStatus = AuthStatus.PENDING;
+
         String body = "client_id=" + CLIENT_ID
-                + "&scope=" + URLEncoder.encode(SCOPES, StandardCharsets.UTF_8);
+                + "&scopes=" + URLEncoder.encode(SCOPES, StandardCharsets.UTF_8);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://id.twitch.tv/oauth2/device"))
@@ -64,14 +90,23 @@ public class TwitchAuthManager {
 
         CompletableFuture.supplyAsync(() -> {
             try {
-                return HTTP.send(request, HttpResponse.BodyHandlers.ofString()).body();
+                return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }).thenAccept(responseBody -> {
-            JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
+        }).thenAccept(resp -> {
+            if (resp.statusCode() != 200) {
+                lastError = tr("cobblemonstreamermode.error.device_authorization_http", resp.statusCode());
+                authStatus = AuthStatus.NOT_AUTHORIZED;
+                return;
+            }
+
+            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
             pendingUserCode = json.get("user_code").getAsString();
-            pendingVerificationUri = json.get("verification_uri").getAsString();
+            pendingVerificationUri = completeVerificationUri(
+                    json.get("verification_uri").getAsString(),
+                    pendingUserCode
+            );
             authStatus = AuthStatus.PENDING;
 
             startPolling(
@@ -80,13 +115,18 @@ public class TwitchAuthManager {
                     json.get("expires_in").getAsInt()
             );
         }).exceptionally(ex -> {
-            lastError = ex.getMessage();
+            lastError = exceptionMessage(ex);
             authStatus = AuthStatus.NOT_AUTHORIZED;
             return null;
         });
     }
 
-    private void refreshAccessToken(TwitchCredentials creds, java.util.function.Consumer<String> onDone, Runnable onFail) {
+    private void refreshAccessToken(
+            TwitchCredentials creds,
+            Consumer<TwitchCredentials> onDone,
+            Runnable onInvalidRefresh,
+            Consumer<String> onTransientError
+    ) {
         String body = "grant_type=refresh_token"
                 + "&refresh_token=" + URLEncoder.encode(creds.refreshToken, StandardCharsets.UTF_8)
                 + "&client_id=" + CLIENT_ID;
@@ -105,81 +145,161 @@ public class TwitchAuthManager {
             }
         }).thenAccept(resp -> {
             if (resp.statusCode() != 200) {
-                onFail.run();
+                String error = tr("cobblemonstreamermode.error.token_refresh_http", resp.statusCode());
+                lastError = error;
+                if (resp.statusCode() >= 400 && resp.statusCode() < 500) {
+                    authStatus = AuthStatus.NOT_AUTHORIZED;
+                    onInvalidRefresh.run();
+                } else {
+                    onTransientError.accept(error);
+                }
                 return;
             }
-            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
 
+            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
             creds.accessToken = json.get("access_token").getAsString();
-            creds.refreshToken = json.get("refresh_token").getAsString();
+            if (json.has("refresh_token")) {
+                creds.refreshToken = json.get("refresh_token").getAsString();
+            }
             int expiresIn = json.get("expires_in").getAsInt();
             creds.expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + expiresIn;
-
-            if (creds.channelId == null) {
-                fetchChannelId(creds.accessToken,
-                        userData -> {
-                            creds.channelId = userData.get("id").getAsString();
-                            creds.channelName = userData.get("login").getAsString();
-                            creds.save();
-                            onDone.accept(creds.accessToken);
-                        },
-                        () -> {
-                            creds.save();
-                            onDone.accept(creds.accessToken);
-                        }
-                );
-            } else {
-                creds.save();
-                onDone.accept(creds.accessToken);
-            }
+            TwitchCredentialStore.save(creds);
+            onDone.accept(creds);
         }).exceptionally(ex -> {
-            authStatus = AuthStatus.NOT_AUTHORIZED;
-            onFail.run();
+            String error = exceptionMessage(ex);
+            lastError = error;
+            onTransientError.accept(error);
             return null;
         });
     }
 
-    public void getValidAccessToken(java.util.function.Consumer<String> onToken, Runnable onNeedAuth) {
-        TwitchCredentials creds = TwitchCredentials.load();
-
-        if (creds == null || creds.refreshToken == null) {
-            onNeedAuth.run();
-            return;
-        }
-
-        if (!creds.isExpired()) {
-            onToken.accept(creds.accessToken);
-            return;
-        }
-
-        refreshAccessToken(creds, onToken, onNeedAuth);
+    public void getValidAccessToken(Consumer<String> onToken, Runnable onNeedAuth) {
+        getValidCredentials(creds -> onToken.accept(creds.accessToken), onNeedAuth);
     }
 
-    public void getValidCredentials(java.util.function.Consumer<TwitchCredentials> onReady, Runnable onNeedAuth) {
-        TwitchCredentials creds = TwitchCredentials.load();
+    public void getValidCredentials(Consumer<TwitchCredentials> onReady, Runnable onNeedAuth) {
+        getValidCredentials(onReady, onNeedAuth, error -> onNeedAuth.run());
+    }
 
-        if (creds == null || creds.refreshToken == null) {
+    public void getValidCredentials(
+            Consumer<TwitchCredentials> onReady,
+            Runnable onNeedAuth,
+            Consumer<String> onTransientError
+    ) {
+        TwitchCredentials creds = TwitchCredentialStore.load();
+
+        if (creds == null || creds.refreshToken == null || creds.refreshToken.isBlank()) {
+            authStatus = AuthStatus.NOT_AUTHORIZED;
             onNeedAuth.run();
             return;
         }
 
-        if (!creds.isExpired()) {
-            onReady.accept(creds);
+        if (creds.accessToken == null || creds.accessToken.isBlank() || creds.isExpired()) {
+            refreshAndValidate(creds, onReady, onNeedAuth, onTransientError);
             return;
         }
 
-        refreshAccessToken(creds, token -> onReady.accept(creds), onNeedAuth);
+        validateCredentials(
+                creds,
+                onReady,
+                () -> refreshAndValidate(creds, onReady, onNeedAuth, onTransientError),
+                onTransientError
+        );
+    }
+
+    private void refreshAndValidate(
+            TwitchCredentials creds,
+            Consumer<TwitchCredentials> onReady,
+            Runnable onNeedAuth,
+            Consumer<String> onTransientError
+    ) {
+        refreshAccessToken(
+                creds,
+                refreshed -> validateCredentials(
+                        refreshed,
+                        onReady,
+                        () -> markNeedsAuthorization(tr("cobblemonstreamermode.error.refreshed_token_invalid"), onNeedAuth),
+                        onTransientError
+                ),
+                () -> markNeedsAuthorization(tr("cobblemonstreamermode.error.refresh_token_invalid"), onNeedAuth),
+                onTransientError
+        );
+    }
+
+    private void validateCredentials(
+            TwitchCredentials creds,
+            Consumer<TwitchCredentials> onReady,
+            Runnable onUnauthorized,
+            Consumer<String> onTransientError
+    ) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://id.twitch.tv/oauth2/validate"))
+                .header("Authorization", "Bearer " + creds.accessToken)
+                .GET()
+                .build();
+
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).thenAccept(resp -> {
+            if (resp.statusCode() != 200) {
+                String error = tr("cobblemonstreamermode.error.token_validation_http", resp.statusCode());
+                lastError = error;
+                if (resp.statusCode() >= 400 && resp.statusCode() < 500) {
+                    onUnauthorized.run();
+                } else {
+                    onTransientError.accept(error);
+                }
+                return;
+            }
+
+            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+            if (!CLIENT_ID.equals(json.get("client_id").getAsString())) {
+                lastError = tr("cobblemonstreamermode.error.token_wrong_client");
+                onUnauthorized.run();
+                return;
+            }
+
+            creds.channelId = json.get("user_id").getAsString();
+            creds.channelName = json.get("login").getAsString();
+            authorizedChannelName = creds.channelName;
+            creds.expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + json.get("expires_in").getAsInt();
+            TwitchCredentialStore.save(creds);
+            authStatus = AuthStatus.VALID;
+            lastError = null;
+            onReady.accept(creds);
+        }).exceptionally(ex -> {
+            String error = exceptionMessage(ex);
+            lastError = error;
+            onTransientError.accept(error);
+            return null;
+        });
+    }
+
+    private void markNeedsAuthorization(String error, Runnable onNeedAuth) {
+        lastError = error;
+        authStatus = AuthStatus.NOT_AUTHORIZED;
+        authorizedChannelName = null;
+        onNeedAuth.run();
     }
 
     private void startPolling(String deviceCode, int interval, int expiresIn) {
         pollingActive = true;
         long deadline = System.currentTimeMillis() + expiresIn * 1000L;
+        AtomicInteger currentInterval = new AtomicInteger(interval);
 
         Runnable[] pollTask = new Runnable[1];
         pollTask[0] = () -> {
-            if (!pollingActive) return;
+            if (!pollingActive) {
+                return;
+            }
             if (System.currentTimeMillis() > deadline) {
                 pollingActive = false;
+                authStatus = AuthStatus.NOT_AUTHORIZED;
+                lastError = tr("cobblemonstreamermode.error.authorization_expired");
                 return;
             }
 
@@ -207,53 +327,27 @@ public class TwitchAuthManager {
                 JsonObject err = JsonParser.parseString(resp.body()).getAsJsonObject();
                 String message = err.has("message") ? err.get("message").getAsString() : "";
 
-                if (message.contains("authorization_pending")) {
-                } else if (message.contains("slow_down")) {
-                } else {
+                if (message.contains("slow_down")) {
+                    currentInterval.addAndGet(5);
+                } else if (!message.contains("authorization_pending")) {
                     pollingActive = false;
+                    authStatus = AuthStatus.NOT_AUTHORIZED;
+                    lastError = message.isBlank() ? tr("cobblemonstreamermode.error.authorization_failed") : message;
                     return;
                 }
 
-                SCHEDULER.schedule(pollTask[0], interval, TimeUnit.SECONDS);
+                SCHEDULER.schedule(pollTask[0], currentInterval.get(), TimeUnit.SECONDS);
             } catch (Exception e) {
                 pollingActive = false;
+                authStatus = AuthStatus.NOT_AUTHORIZED;
+                lastError = e.getMessage();
             }
         };
 
-        SCHEDULER.schedule(pollTask[0], interval, TimeUnit.SECONDS);
-    }
-
-    public void fetchChannelId(String accessToken, java.util.function.Consumer<JsonObject> onId, Runnable onFail) {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.twitch.tv/helix/users"))
-                .header("Authorization", "Bearer " + accessToken)
-                .header("Client-Id", CLIENT_ID)
-                .GET()
-                .build();
-
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }).thenAccept(resp -> {
-            if (resp.statusCode() != 200) {
-                onFail.run();
-                return;
-            }
-            JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
-            JsonObject userData = json.getAsJsonArray("data")
-                    .get(0).getAsJsonObject();
-            onId.accept(userData);
-        }).exceptionally(ex -> {
-            onFail.run();
-            return null;
-        });
+        SCHEDULER.schedule(pollTask[0], currentInterval.get(), TimeUnit.SECONDS);
     }
 
     private void onSuccess(JsonObject json) {
-        authStatus = AuthStatus.VALID;
         pendingUserCode = null;
         pendingVerificationUri = null;
 
@@ -262,14 +356,52 @@ public class TwitchAuthManager {
         creds.refreshToken = json.get("refresh_token").getAsString();
         int expiresIn = json.get("expires_in").getAsInt();
         creds.expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + expiresIn;
+        TwitchCredentialStore.save(creds);
 
-        fetchChannelId(creds.accessToken,
-                userData -> {
-                    creds.channelId = userData.get("id").getAsString();
-                    creds.channelName = userData.get("login").getAsString();
-                    creds.save();
+        validateCredentials(
+                creds,
+                validated -> {
+                    if (StreamerModeConfig.INSTANCE.isStreamerModeEnabled()) {
+                        TwitchClientManager.INSTANCE.start(validated);
+                    }
                 },
-                creds::save
+                () -> authStatus = AuthStatus.NOT_AUTHORIZED,
+                error -> {
+                    lastError = error;
+                    authStatus = AuthStatus.NOT_AUTHORIZED;
+                }
         );
+    }
+
+    private static String completeVerificationUri(String verificationUri, String userCode) {
+        if (verificationUri == null || verificationUri.isBlank() || userCode == null || userCode.isBlank()) {
+            return verificationUri;
+        }
+        if (verificationUri.contains("device-code=")) {
+            return verificationUri;
+        }
+
+        String separator = verificationUri.contains("?") ? "&" : "?";
+        StringBuilder url = new StringBuilder(verificationUri);
+        if (!verificationUri.contains("public=")) {
+            url.append(separator).append("public=true");
+            separator = "&";
+        }
+        url.append(separator)
+                .append("device-code=")
+                .append(URLEncoder.encode(userCode, StandardCharsets.UTF_8));
+        return url.toString();
+    }
+
+    private static String exceptionMessage(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
+    }
+
+    private static String tr(String key, Object... args) {
+        return Component.translatable(key, args).getString();
     }
 }

@@ -11,7 +11,5 @@
   "overwrites": {
     "requireAnnotations": true
   },
-  "mixins": [
-    "gui.BattleMoveSelectionMixin"
-  ]
+  "mixins": []
 }

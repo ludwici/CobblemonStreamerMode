@@ -27,7 +27,7 @@ public class CobblemonStreamerMode implements ModInitializer {
 			});
 		});
 
-		CobblemonEvents.BATTLE_FAINTED.subscribe(event -> {
+		CobblemonEvents.BATTLE_VICTORY.subscribe(event -> {
 			event.getBattle().getPlayers().forEach(player -> {
 				BattleStatusS2C payload = new BattleStatusS2C(false);
 				ServerPlayNetworking.send(player, payload);
