@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "com.ludwici.cobblemonstreamermode.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "gui.BattleGUIMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  },
+  "mixins": [
+    "gui.BattleMoveSelectionMixin"
+  ]
+}
