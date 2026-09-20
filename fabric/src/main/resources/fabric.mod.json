@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "cobblemon_streamer_mode",
+  "version": "${version}",
+  "name": "Cobblemon Streamer Mode",
+  "description": "Twitch viewer voting for Cobblemon battles.",
+  "authors": [
+    "Ludwici"
+  ],
+  "license": "All Rights Reserved",
+  "icon": "assets/cobblemon_streamer_mode/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.ludwici.cobblemonstreamermode.fabric.CobblemonStreamerModeFabric"
+    ],
+    "client": [
+      "com.ludwici.cobblemonstreamermode.fabric.client.CobblemonStreamerModeFabricClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "cobblemon_streamer_mode.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.11",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*",
+    "cobblemon": ">=1.7.3"
+  }
+}

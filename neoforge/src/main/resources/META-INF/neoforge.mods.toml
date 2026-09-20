@@ -1,0 +1,44 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "cobblemon_streamer_mode"
+version = "${version}"
+displayName = "Cobblemon Streamer Mode"
+authors = "Ludwici"
+description = '''
+Twitch viewer voting for Cobblemon battles.
+'''
+logoFile = "assets/cobblemon_streamer_mode/icon.png"
+
+[[dependencies.cobblemon_streamer_mode]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.cobblemon_streamer_mode]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.cobblemon_streamer_mode]]
+modId = "architectury"
+type = "required"
+versionRange = "[13.0.11,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.cobblemon_streamer_mode]]
+modId = "cobblemon"
+type = "required"
+versionRange = "[1.7.3,1.8.0)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[mixins]]
+config = "cobblemon_streamer_mode.client.mixins.json"
