@@ -11,17 +11,10 @@ public final class CobblemonStreamerMode {
     public static final String MODID = "cobblemon_streamer_mode";
     public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
 
-    private static boolean initialized;
-
     private CobblemonStreamerMode() {
     }
 
     public static void init(BattleStatusSender sender) {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
-
         CobblemonEvents.BATTLE_STARTED_POST.subscribe(event -> event.getBattle().getPlayers().forEach(player -> sender.send(player, new BattleStatusS2C(true))));
         CobblemonEvents.BATTLE_VICTORY.subscribe(event -> event.getBattle().getPlayers().forEach(player -> sender.send(player, new BattleStatusS2C(false))));
         CobblemonEvents.BATTLE_FLED.subscribe(event -> event.getBattle().getPlayers().forEach(player -> sender.send(player, new BattleStatusS2C(false))));

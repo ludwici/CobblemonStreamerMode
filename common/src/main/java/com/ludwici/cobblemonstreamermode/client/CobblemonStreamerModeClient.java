@@ -8,17 +8,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 public final class CobblemonStreamerModeClient {
-    private static boolean initialized;
-
     private CobblemonStreamerModeClient() {
     }
 
     public static void init() {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
-
         BattleStatusS2C.setClientHandler(CobblemonStreamerModeClient::handleBattleStatus);
         TwitchAuthManager.INSTANCE.refreshStatusFromDisk();
         if (TwitchAuthManager.INSTANCE.getAuthStatus() == TwitchAuthManager.AuthStatus.VALID && StreamerModeConfig.INSTANCE.isStreamerModeEnabled()) {
