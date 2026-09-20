@@ -29,14 +29,14 @@ side = "BOTH"
 [[dependencies.cobblemon_streamer_mode]]
 modId = "architectury"
 type = "required"
-versionRange = "[13.0.11,)"
+versionRange = "[13.0.8,)"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.cobblemon_streamer_mode]]
 modId = "cobblemon"
 type = "required"
-versionRange = "[1.7.3,1.8.0)"
+versionRange = "[1.7.3,)"
 ordering = "AFTER"
 side = "BOTH"
 
