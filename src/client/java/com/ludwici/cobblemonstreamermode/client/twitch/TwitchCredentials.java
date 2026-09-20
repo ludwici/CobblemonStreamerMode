@@ -16,8 +16,7 @@ public class TwitchCredentials {
     public String channelName;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir()
-            .resolve("twitchmod/credentials.json");
+    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("twitchmod/credentials.json");
 
     public static TwitchCredentials load() {
         try {
@@ -39,6 +38,6 @@ public class TwitchCredentials {
     }
 
     public boolean isExpired() {
-        return System.currentTimeMillis() / 1000 >= expiresAtEpochSeconds - 60; // запас 60 сек
+        return System.currentTimeMillis() / 1000 >= expiresAtEpochSeconds - 60;
     }
 }

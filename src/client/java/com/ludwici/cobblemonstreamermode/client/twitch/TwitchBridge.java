@@ -17,18 +17,10 @@ public class TwitchBridge {
 
         stop();
 
-        // We only read public chat. Joining anonymously avoids a second OAuth /validate
-        // request inside Twitch4J and lets its WebSocket reconnect independently of token refreshes.
-        twitchClient = TwitchClientBuilder.builder()
-                .withEnableChat(true)
-                .build();
+        twitchClient = TwitchClientBuilder.builder().withEnableChat(true).build();
 
-        twitchClient.getEventManager().onEvent(ChannelMessageEvent.class, event ->
-                BattleManager.INSTANCE.submitChatMessage(event.getUser().getId(), event.getMessage())
-        );
-        twitchClient.getEventManager().onEvent(ChatConnectionStateEvent.class, event ->
-                TwitchClientManager.INSTANCE.onChatConnectionState(event.getState().name())
-        );
+        twitchClient.getEventManager().onEvent(ChannelMessageEvent.class, event -> BattleManager.INSTANCE.submitChatMessage(event.getUser().getId(), event.getMessage()));
+        twitchClient.getEventManager().onEvent(ChatConnectionStateEvent.class, event -> TwitchClientManager.INSTANCE.onChatConnectionState(event.getState().name()));
         twitchClient.getChat().joinChannel(credentials.channelName);
     }
 

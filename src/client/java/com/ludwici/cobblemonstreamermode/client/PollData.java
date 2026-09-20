@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class PollData {
-    public static final long VOTING_DURATION_MS = 30_000L;
     public static final long RESULT_DELAY_MS = 5_000L;
 
     private final Actions currentAction;
@@ -22,20 +21,20 @@ public final class PollData {
     private final List<Option> options;
     private final int[] votes;
     private final Set<String> voters = new HashSet<>();
-    private final long startedAtMs;
+    private final long votingDurationMs;
     private final long votingEndsAtMs;
 
     private boolean finished;
     private int winnerIndex = -1;
     private long executeAtMs = Long.MAX_VALUE;
 
-    public PollData(Actions currentAction, String title, List<Option> options, long startedAtMs) {
+    public PollData(Actions currentAction, String title, List<Option> options, long startedAtMs, long votingDurationMs) {
         this.currentAction = currentAction;
         this.title = title;
         this.options = List.copyOf(options);
         this.votes = new int[options.size()];
-        this.startedAtMs = startedAtMs;
-        this.votingEndsAtMs = startedAtMs + VOTING_DURATION_MS;
+        this.votingDurationMs = votingDurationMs;
+        this.votingEndsAtMs = startedAtMs + votingDurationMs;
     }
 
     public Actions getCurrentAction() {
@@ -107,9 +106,7 @@ public final class PollData {
             ));
         }
 
-        float progress = finished
-                ? 0F
-                : Math.max(0F, Math.min(1F, (votingEndsAtMs - nowMs) / (float) VOTING_DURATION_MS));
+        float progress = finished ? 0F : Math.clamp((votingEndsAtMs - nowMs) / (float) votingDurationMs, 0F, 1F);
         long deadlineMs = finished ? executeAtMs : votingEndsAtMs;
         int secondsRemaining = (int) Math.ceil(Math.max(0L, deadlineMs - nowMs) / 1000D);
 

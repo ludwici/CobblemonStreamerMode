@@ -27,7 +27,7 @@ public class TwitchClientManager {
     private volatile boolean starting = false;
     private volatile boolean reconnecting = false;
     private volatile boolean shouldRun = false;
-    private volatile String lastError;
+    private volatile Component lastError;
 
     private ScheduledFuture<?> revalidationTask;
     private ScheduledFuture<?> revalidationRetryTask;
@@ -40,16 +40,8 @@ public class TwitchClientManager {
         return running;
     }
 
-    public boolean isStarting() {
-        return starting;
-    }
-
-    public boolean isReconnecting() {
-        return reconnecting;
-    }
-
     public String getLastError() {
-        return lastError;
+        return lastError == null ? null : lastError.getString();
     }
 
     public void start() {
@@ -65,12 +57,12 @@ public class TwitchClientManager {
 
         TwitchAuthManager.INSTANCE.getValidCredentials(
                 this::startValidated,
-                () -> handleAuthorizationLost(tr("cobblemonstreamermode.error.auth_required")),
+                this::handleAuthorizationLost,
                 error -> {
                     synchronized (this) {
                         starting = false;
                         running = false;
-                        lastError = tr("cobblemonstreamermode.error.oauth", error);
+                        lastError = Component.translatable("cobblemonstreamermode.error.oauth", error);
                     }
                     scheduleStartRetry();
                 }
@@ -119,7 +111,7 @@ public class TwitchClientManager {
                 }
             } catch (Exception e) {
                 synchronized (this) {
-                    lastError = e.getMessage();
+                    lastError = Component.literal(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
                     running = false;
                     starting = false;
                     reconnecting = shouldRun;
@@ -198,18 +190,16 @@ public class TwitchClientManager {
                     revalidating.set(false);
                     synchronized (this) {
                         cancelRevalidationRetryTask();
-                        if (lastError != null && lastError.startsWith("Twitch OAuth:")) {
-                            lastError = null;
-                        }
+                        lastError = null;
                     }
                 },
                 () -> {
                     revalidating.set(false);
-                    handleAuthorizationLost(tr("cobblemonstreamermode.error.auth_invalid"));
+                    handleAuthorizationLost();
                 },
                 error -> {
                     revalidating.set(false);
-                    lastError = tr("cobblemonstreamermode.error.oauth", error);
+                    lastError = Component.translatable("cobblemonstreamermode.error.oauth", error);
                     scheduleRevalidationRetry();
                 }
         );
@@ -240,7 +230,7 @@ public class TwitchClientManager {
             try {
                 TwitchBridge.reconnect();
             } catch (Exception e) {
-                lastError = tr("cobblemonstreamermode.error.chat_reconnect", e.getMessage());
+                lastError = Component.translatable("cobblemonstreamermode.error.chat_reconnect", e.getMessage());
                 scheduleStartRetry();
             }
         }, RECONNECT_DELAY_SECONDS, TimeUnit.SECONDS);
@@ -270,13 +260,13 @@ public class TwitchClientManager {
         }, RECONNECT_DELAY_SECONDS, TimeUnit.SECONDS);
     }
 
-    private void handleAuthorizationLost(String message) {
+    private void handleAuthorizationLost() {
         synchronized (this) {
             shouldRun = false;
             running = false;
             starting = false;
             reconnecting = false;
-            lastError = message;
+            lastError = null;
             cancelScheduledTasks();
         }
         TwitchBridge.stop();
@@ -305,7 +295,4 @@ public class TwitchClientManager {
         }
     }
 
-    private static String tr(String key, Object... args) {
-        return Component.translatable(key, args).getString();
-    }
 }

@@ -26,12 +26,12 @@ public class TwitchAuthManager {
         VALID
     }
 
-    public volatile AuthStatus authStatus = AuthStatus.NOT_AUTHORIZED;
+    private volatile AuthStatus authStatus = AuthStatus.NOT_AUTHORIZED;
 
     private volatile String pendingUserCode;
     private volatile String pendingVerificationUri;
     private volatile String authorizedChannelName;
-    private volatile String lastError;
+    private volatile Component lastError;
 
     private static final String CLIENT_ID = "3lsck8o6uuez43dqpu96zaycj7b5ra";
     public static final String SCOPES = "chat:read";
@@ -50,10 +50,6 @@ public class TwitchAuthManager {
         return authStatus;
     }
 
-    public String getPendingUserCode() {
-        return pendingUserCode;
-    }
-
     public String getPendingVerificationUri() {
         return pendingVerificationUri;
     }
@@ -63,7 +59,7 @@ public class TwitchAuthManager {
     }
 
     public String getLastError() {
-        return lastError;
+        return lastError == null ? null : lastError.getString();
     }
 
     public void refreshStatusFromDisk() {
@@ -71,6 +67,9 @@ public class TwitchAuthManager {
         boolean hasRefreshToken = creds != null && creds.refreshToken != null && !creds.refreshToken.isBlank();
         authStatus = hasRefreshToken ? AuthStatus.VALID : AuthStatus.NOT_AUTHORIZED;
         authorizedChannelName = hasRefreshToken ? creds.channelName : null;
+        if (!hasRefreshToken) {
+            lastError = null;
+        }
     }
 
     public void beginDeviceFlow() {
@@ -79,8 +78,7 @@ public class TwitchAuthManager {
         pendingVerificationUri = null;
         authStatus = AuthStatus.PENDING;
 
-        String body = "client_id=" + CLIENT_ID
-                + "&scopes=" + URLEncoder.encode(SCOPES, StandardCharsets.UTF_8);
+        String body = "client_id=" + CLIENT_ID + "&scopes=" + URLEncoder.encode(SCOPES, StandardCharsets.UTF_8);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://id.twitch.tv/oauth2/device"))
@@ -96,17 +94,14 @@ public class TwitchAuthManager {
             }
         }).thenAccept(resp -> {
             if (resp.statusCode() != 200) {
-                lastError = tr("cobblemonstreamermode.error.device_authorization_http", resp.statusCode());
+                lastError = Component.translatable("cobblemonstreamermode.error.device_authorization_http", resp.statusCode());
                 authStatus = AuthStatus.NOT_AUTHORIZED;
                 return;
             }
 
             JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
             pendingUserCode = json.get("user_code").getAsString();
-            pendingVerificationUri = completeVerificationUri(
-                    json.get("verification_uri").getAsString(),
-                    pendingUserCode
-            );
+            pendingVerificationUri = completeVerificationUri(json.get("verification_uri").getAsString(), pendingUserCode);
             authStatus = AuthStatus.PENDING;
 
             startPolling(
@@ -115,18 +110,13 @@ public class TwitchAuthManager {
                     json.get("expires_in").getAsInt()
             );
         }).exceptionally(ex -> {
-            lastError = exceptionMessage(ex);
+            lastError = Component.literal(exceptionMessage(ex));
             authStatus = AuthStatus.NOT_AUTHORIZED;
             return null;
         });
     }
 
-    private void refreshAccessToken(
-            TwitchCredentials creds,
-            Consumer<TwitchCredentials> onDone,
-            Runnable onInvalidRefresh,
-            Consumer<String> onTransientError
-    ) {
+    private void refreshAccessToken(TwitchCredentials creds, Consumer<TwitchCredentials> onDone, Runnable onInvalidRefresh, Consumer<Component> onTransientError) {
         String body = "grant_type=refresh_token"
                 + "&refresh_token=" + URLEncoder.encode(creds.refreshToken, StandardCharsets.UTF_8)
                 + "&client_id=" + CLIENT_ID;
@@ -145,7 +135,7 @@ public class TwitchAuthManager {
             }
         }).thenAccept(resp -> {
             if (resp.statusCode() != 200) {
-                String error = tr("cobblemonstreamermode.error.token_refresh_http", resp.statusCode());
+                Component error = Component.translatable("cobblemonstreamermode.error.token_refresh_http", resp.statusCode());
                 lastError = error;
                 if (resp.statusCode() >= 400 && resp.statusCode() < 500) {
                     authStatus = AuthStatus.NOT_AUTHORIZED;
@@ -166,30 +156,20 @@ public class TwitchAuthManager {
             TwitchCredentialStore.save(creds);
             onDone.accept(creds);
         }).exceptionally(ex -> {
-            String error = exceptionMessage(ex);
+            Component error = Component.literal(exceptionMessage(ex));
             lastError = error;
             onTransientError.accept(error);
             return null;
         });
     }
 
-    public void getValidAccessToken(Consumer<String> onToken, Runnable onNeedAuth) {
-        getValidCredentials(creds -> onToken.accept(creds.accessToken), onNeedAuth);
-    }
-
-    public void getValidCredentials(Consumer<TwitchCredentials> onReady, Runnable onNeedAuth) {
-        getValidCredentials(onReady, onNeedAuth, error -> onNeedAuth.run());
-    }
-
-    public void getValidCredentials(
-            Consumer<TwitchCredentials> onReady,
-            Runnable onNeedAuth,
-            Consumer<String> onTransientError
-    ) {
+    public void getValidCredentials(Consumer<TwitchCredentials> onReady, Runnable onNeedAuth, Consumer<Component> onTransientError) {
         TwitchCredentials creds = TwitchCredentialStore.load();
 
         if (creds == null || creds.refreshToken == null || creds.refreshToken.isBlank()) {
             authStatus = AuthStatus.NOT_AUTHORIZED;
+            authorizedChannelName = null;
+            lastError = null;
             onNeedAuth.run();
             return;
         }
@@ -199,39 +179,24 @@ public class TwitchAuthManager {
             return;
         }
 
-        validateCredentials(
-                creds,
-                onReady,
-                () -> refreshAndValidate(creds, onReady, onNeedAuth, onTransientError),
-                onTransientError
-        );
+        validateCredentials(creds, onReady, () -> refreshAndValidate(creds, onReady, onNeedAuth, onTransientError), onTransientError);
     }
 
-    private void refreshAndValidate(
-            TwitchCredentials creds,
-            Consumer<TwitchCredentials> onReady,
-            Runnable onNeedAuth,
-            Consumer<String> onTransientError
-    ) {
+    private void refreshAndValidate(TwitchCredentials creds, Consumer<TwitchCredentials> onReady, Runnable onNeedAuth, Consumer<Component> onTransientError) {
         refreshAccessToken(
                 creds,
                 refreshed -> validateCredentials(
                         refreshed,
                         onReady,
-                        () -> markNeedsAuthorization(tr("cobblemonstreamermode.error.refreshed_token_invalid"), onNeedAuth),
+                        () -> markNeedsAuthorization(onNeedAuth),
                         onTransientError
                 ),
-                () -> markNeedsAuthorization(tr("cobblemonstreamermode.error.refresh_token_invalid"), onNeedAuth),
+                () -> markNeedsAuthorization(onNeedAuth),
                 onTransientError
         );
     }
 
-    private void validateCredentials(
-            TwitchCredentials creds,
-            Consumer<TwitchCredentials> onReady,
-            Runnable onUnauthorized,
-            Consumer<String> onTransientError
-    ) {
+    private void validateCredentials(TwitchCredentials creds, Consumer<TwitchCredentials> onReady, Runnable onUnauthorized, Consumer<Component> onTransientError) {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://id.twitch.tv/oauth2/validate"))
                 .header("Authorization", "Bearer " + creds.accessToken)
@@ -246,7 +211,7 @@ public class TwitchAuthManager {
             }
         }).thenAccept(resp -> {
             if (resp.statusCode() != 200) {
-                String error = tr("cobblemonstreamermode.error.token_validation_http", resp.statusCode());
+                Component error = Component.translatable("cobblemonstreamermode.error.token_validation_http", resp.statusCode());
                 lastError = error;
                 if (resp.statusCode() >= 400 && resp.statusCode() < 500) {
                     onUnauthorized.run();
@@ -258,7 +223,7 @@ public class TwitchAuthManager {
 
             JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
             if (!CLIENT_ID.equals(json.get("client_id").getAsString())) {
-                lastError = tr("cobblemonstreamermode.error.token_wrong_client");
+                lastError = Component.translatable("cobblemonstreamermode.error.token_wrong_client");
                 onUnauthorized.run();
                 return;
             }
@@ -272,15 +237,15 @@ public class TwitchAuthManager {
             lastError = null;
             onReady.accept(creds);
         }).exceptionally(ex -> {
-            String error = exceptionMessage(ex);
+            Component error = Component.literal(exceptionMessage(ex));
             lastError = error;
             onTransientError.accept(error);
             return null;
         });
     }
 
-    private void markNeedsAuthorization(String error, Runnable onNeedAuth) {
-        lastError = error;
+    private void markNeedsAuthorization(Runnable onNeedAuth) {
+        lastError = null;
         authStatus = AuthStatus.NOT_AUTHORIZED;
         authorizedChannelName = null;
         onNeedAuth.run();
@@ -299,7 +264,7 @@ public class TwitchAuthManager {
             if (System.currentTimeMillis() > deadline) {
                 pollingActive = false;
                 authStatus = AuthStatus.NOT_AUTHORIZED;
-                lastError = tr("cobblemonstreamermode.error.authorization_expired");
+                lastError = Component.translatable("cobblemonstreamermode.error.authorization_expired");
                 return;
             }
 
@@ -332,7 +297,7 @@ public class TwitchAuthManager {
                 } else if (!message.contains("authorization_pending")) {
                     pollingActive = false;
                     authStatus = AuthStatus.NOT_AUTHORIZED;
-                    lastError = message.isBlank() ? tr("cobblemonstreamermode.error.authorization_failed") : message;
+                    lastError = message.isBlank() ? Component.translatable("cobblemonstreamermode.error.authorization_failed") : Component.literal(message);
                     return;
                 }
 
@@ -340,7 +305,7 @@ public class TwitchAuthManager {
             } catch (Exception e) {
                 pollingActive = false;
                 authStatus = AuthStatus.NOT_AUTHORIZED;
-                lastError = e.getMessage();
+                lastError = Component.literal(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
             }
         };
 
@@ -387,9 +352,7 @@ public class TwitchAuthManager {
             url.append(separator).append("public=true");
             separator = "&";
         }
-        url.append(separator)
-                .append("device-code=")
-                .append(URLEncoder.encode(userCode, StandardCharsets.UTF_8));
+        url.append(separator).append("device-code=").append(URLEncoder.encode(userCode, StandardCharsets.UTF_8));
         return url.toString();
     }
 
@@ -401,7 +364,4 @@ public class TwitchAuthManager {
         return cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
     }
 
-    private static String tr(String key, Object... args) {
-        return Component.translatable(key, args).getString();
-    }
 }

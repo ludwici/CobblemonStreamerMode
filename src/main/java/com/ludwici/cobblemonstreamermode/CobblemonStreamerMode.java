@@ -20,7 +20,6 @@ public class CobblemonStreamerMode implements ModInitializer {
 	public void onInitialize() {
 		Payloads.register();
 		CobblemonEvents.BATTLE_STARTED_POST.subscribe(event -> {
-			// start polling
 			event.getBattle().getPlayers().forEach(player -> {
 				BattleStatusS2C payload = new BattleStatusS2C(true);
 				ServerPlayNetworking.send(player, payload);
@@ -41,9 +40,6 @@ public class CobblemonStreamerMode implements ModInitializer {
 			});
 		});
 
-//		CobblemonEvents.BATTLE_STARTED_POST.subscribe(event -> {
-//
-//		});
 	}
 
 	public static ResourceLocation id(String path) {

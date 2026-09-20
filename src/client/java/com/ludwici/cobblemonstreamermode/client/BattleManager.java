@@ -17,10 +17,12 @@ public final class BattleManager {
     }
 
     public synchronized void startPoll(PollData.Actions action, String title, List<PollData.Option> options) {
-        if (!StreamerModeConfig.INSTANCE.isStreamerModeEnabled() || !currentStatus || options.isEmpty()) {
+        StreamerModeConfig config = StreamerModeConfig.INSTANCE;
+        if (!config.isStreamerModeEnabled() || !config.isVotingEnabled(action) || !currentStatus || options.isEmpty()) {
             return;
         }
-        currentPoll = new PollData(action, title, options, System.currentTimeMillis());
+        long votingDurationMs = config.getVotingDurationSeconds(action) * 1000L;
+        currentPoll = new PollData(action, title, options, System.currentTimeMillis(), votingDurationMs);
     }
 
     public synchronized void submitChatMessage(String userId, String message) {
@@ -46,7 +48,8 @@ public final class BattleManager {
     }
 
     public void tick() {
-        if (!StreamerModeConfig.INSTANCE.isStreamerModeEnabled()) {
+        StreamerModeConfig config = StreamerModeConfig.INSTANCE;
+        if (!config.isStreamerModeEnabled()) {
             cancelPoll();
             return;
         }
@@ -54,6 +57,10 @@ public final class BattleManager {
         Runnable winnerAction = null;
         synchronized (this) {
             if (currentPoll == null) {
+                return;
+            }
+            if (!config.isVotingEnabled(currentPoll.getCurrentAction())) {
+                currentPoll = null;
                 return;
             }
 
@@ -78,7 +85,7 @@ public final class BattleManager {
     }
 
     public synchronized boolean isPollBlockingInput() {
-        return StreamerModeConfig.INSTANCE.isStreamerModeEnabled() && currentPoll != null;
+        return StreamerModeConfig.INSTANCE.isStreamerModeEnabled() && currentPoll != null && StreamerModeConfig.INSTANCE.isVotingEnabled(currentPoll.getCurrentAction());
     }
 
     public synchronized void cancelPoll() {
