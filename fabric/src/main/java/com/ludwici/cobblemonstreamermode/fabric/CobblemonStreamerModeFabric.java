@@ -10,6 +10,10 @@ public final class CobblemonStreamerModeFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         PayloadTypeRegistry.playS2C().register(BattleStatusS2C.ID, BattleStatusS2C.STREAM_CODEC);
-        CobblemonStreamerMode.init(ServerPlayNetworking::send);
+        CobblemonStreamerMode.init((player, payload) -> {
+            if (ServerPlayNetworking.canSend(player, BattleStatusS2C.ID)) {
+                ServerPlayNetworking.send(player, payload);
+            }
+        });
     }
 }
