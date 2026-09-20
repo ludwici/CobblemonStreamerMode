@@ -1,16 +1,16 @@
 modLoader = "javafml"
 loaderVersion = "[4,)"
-license = "All Rights Reserved"
+license = "LGPLv3"
 
 [[mods]]
 modId = "cobblemon_streamer_mode"
 version = "${version}"
 displayName = "Cobblemon Streamer Mode"
-authors = "Ludwici"
+authors = "ludwici"
 description = '''
 Twitch viewer voting for Cobblemon battles.
 '''
-logoFile = "assets/cobblemon_streamer_mode/icon.png"
+logoFile = "icon.png"
 
 [[dependencies.cobblemon_streamer_mode]]
 modId = "neoforge"

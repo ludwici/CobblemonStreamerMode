@@ -5,10 +5,10 @@
   "name": "Cobblemon Streamer Mode",
   "description": "Twitch viewer voting for Cobblemon battles.",
   "authors": [
-    "Ludwici"
+    "ludwici"
   ],
-  "license": "All Rights Reserved",
-  "icon": "assets/cobblemon_streamer_mode/icon.png",
+  "license": "LGPLv3",
+  "icon": "icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
