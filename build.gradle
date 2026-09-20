@@ -16,7 +16,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"cobblemon-streamer-mode" {
+		"cobblemon_streamer_mode" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}

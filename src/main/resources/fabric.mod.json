@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"id": "cobblemon-streamer-mode",
+	"id": "cobblemon_streamer_mode",
 	"version": "${version}",
 	"name": "Cobblemon Streamer Mode",
 	"description": "This is an example description! Tell everyone what your mod is about!",
@@ -12,7 +12,7 @@
 		"sources": "https://github.com/FabricMC/fabric-example-mod"
 	},
 	"license": "CC0-1.0",
-	"icon": "assets/cobblemon-streamer-mode/icon.png",
+	"icon": "assets/cobblemon_streamer_mode/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [

@@ -10,4 +10,4 @@ pluginManagement {
 }
 
 // Should match your modid
-rootProject.name = 'cobblemon-streamer-mode'
+rootProject.name = 'cobblemon_streamer_mode'

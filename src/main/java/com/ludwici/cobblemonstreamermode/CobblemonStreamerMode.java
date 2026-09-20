@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CobblemonStreamerMode implements ModInitializer {
-	public static final String MODID = "cobblemon-streamer-mode";
+	public static final String MODID = "cobblemon_streamer_mode";
 
 	public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
 
