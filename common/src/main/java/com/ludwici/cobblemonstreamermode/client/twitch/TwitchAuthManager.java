@@ -18,7 +18,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-public class TwitchAuthManager {
+import static com.ludwici.cobblemonstreamermode.CobblemonStreamerMode.LOGGER;
+
+public final class TwitchAuthManager {
 
     public enum AuthStatus {
         NOT_AUTHORIZED,
@@ -28,7 +30,6 @@ public class TwitchAuthManager {
 
     private volatile AuthStatus authStatus = AuthStatus.NOT_AUTHORIZED;
 
-    private volatile String pendingUserCode;
     private volatile String pendingVerificationUri;
     private volatile String authorizedChannelName;
     private volatile Component lastError;
@@ -45,6 +46,9 @@ public class TwitchAuthManager {
     private volatile boolean pollingActive = false;
 
     public static final TwitchAuthManager INSTANCE = new TwitchAuthManager();
+
+    private TwitchAuthManager() {
+    }
 
     public AuthStatus getAuthStatus() {
         return authStatus;
@@ -74,7 +78,6 @@ public class TwitchAuthManager {
 
     public void beginDeviceFlow() {
         lastError = null;
-        pendingUserCode = null;
         pendingVerificationUri = null;
         authStatus = AuthStatus.PENDING;
 
@@ -100,8 +103,8 @@ public class TwitchAuthManager {
             }
 
             JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
-            pendingUserCode = json.get("user_code").getAsString();
-            pendingVerificationUri = completeVerificationUri(json.get("verification_uri").getAsString(), pendingUserCode);
+            String userCode = json.get("user_code").getAsString();
+            pendingVerificationUri = completeVerificationUri(json.get("verification_uri").getAsString(), userCode);
             authStatus = AuthStatus.PENDING;
 
             startPolling(
@@ -156,6 +159,7 @@ public class TwitchAuthManager {
             TwitchCredentialStore.save(creds);
             onDone.accept(creds);
         }).exceptionally(ex -> {
+            LOGGER.warn("Failed to refresh Twitch access token", ex);
             Component error = Component.literal(exceptionMessage(ex));
             lastError = error;
             onTransientError.accept(error);
@@ -237,6 +241,7 @@ public class TwitchAuthManager {
             lastError = null;
             onReady.accept(creds);
         }).exceptionally(ex -> {
+            LOGGER.warn("Failed to validate Twitch access token", ex);
             Component error = Component.literal(exceptionMessage(ex));
             lastError = error;
             onTransientError.accept(error);
@@ -313,7 +318,6 @@ public class TwitchAuthManager {
     }
 
     private void onSuccess(JsonObject json) {
-        pendingUserCode = null;
         pendingVerificationUri = null;
 
         TwitchCredentials creds = new TwitchCredentials();

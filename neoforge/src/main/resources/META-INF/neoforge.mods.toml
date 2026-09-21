@@ -40,5 +40,12 @@ versionRange = "[1.7.3,)"
 ordering = "AFTER"
 side = "BOTH"
 
+[[dependencies.cobblemon_streamer_mode]]
+modId = "twitch4j"
+type = "required"
+versionRange = "[${twitch4j_neoforge_version},)"
+ordering = "AFTER"
+side = "CLIENT"
+
 [[mixins]]
 config = "cobblemon_streamer_mode.client.mixins.json"

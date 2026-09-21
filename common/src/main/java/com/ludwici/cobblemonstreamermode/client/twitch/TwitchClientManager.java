@@ -9,7 +9,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TwitchClientManager {
+import static com.ludwici.cobblemonstreamermode.CobblemonStreamerMode.LOGGER;
+
+public final class TwitchClientManager {
     public static final TwitchClientManager INSTANCE = new TwitchClientManager();
 
     private static final long REVALIDATION_INTERVAL_MINUTES = 60L;
@@ -23,10 +25,9 @@ public class TwitchClientManager {
     });
     private final AtomicBoolean revalidating = new AtomicBoolean(false);
 
-    private volatile boolean running = false;
-    private volatile boolean starting = false;
-    private volatile boolean reconnecting = false;
-    private volatile boolean shouldRun = false;
+    private volatile boolean running;
+    private volatile boolean starting;
+    private volatile boolean shouldRun;
     private volatile Component lastError;
 
     private ScheduledFuture<?> revalidationTask;
@@ -51,7 +52,6 @@ public class TwitchClientManager {
             }
             shouldRun = true;
             starting = true;
-            reconnecting = false;
             lastError = null;
         }
 
@@ -76,7 +76,6 @@ public class TwitchClientManager {
             }
             shouldRun = true;
             starting = true;
-            reconnecting = false;
             lastError = null;
         }
         startValidated(credentials);
@@ -86,7 +85,6 @@ public class TwitchClientManager {
         synchronized (this) {
             if (!shouldRun) {
                 starting = false;
-                reconnecting = false;
                 return;
             }
         }
@@ -98,36 +96,40 @@ public class TwitchClientManager {
                     if (!shouldRun) {
                         running = false;
                         starting = false;
-                        reconnecting = false;
                         TwitchBridge.stop();
                         return;
                     }
                     running = true;
                     starting = false;
-                    reconnecting = false;
                     lastError = null;
                     cancelReconnectTask();
                     scheduleHourlyRevalidation();
                 }
             } catch (Exception e) {
+                LOGGER.warn("Failed to start Twitch client", e);
                 synchronized (this) {
                     lastError = Component.literal(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
                     running = false;
                     starting = false;
-                    reconnecting = shouldRun;
                 }
                 scheduleStartRetry();
             }
+        }).exceptionally(throwable -> {
+            LOGGER.error("Unexpected Twitch client startup failure", throwable);
+            synchronized (this) {
+                lastError = Component.literal(throwable.getMessage() == null ? throwable.getClass().getSimpleName() : throwable.getMessage());
+                running = false;
+                starting = false;
+            }
+            return null;
         });
     }
-
 
     public void stop() {
         synchronized (this) {
             shouldRun = false;
             running = false;
             starting = false;
-            reconnecting = false;
             lastError = null;
             revalidating.set(false);
             cancelScheduledTasks();
@@ -145,14 +147,12 @@ public class TwitchClientManager {
                 synchronized (this) {
                     running = true;
                     starting = false;
-                    reconnecting = false;
                     lastError = null;
                     cancelReconnectTask();
                 }
             }
             case "CONNECTING", "RECONNECTING" -> {
                 synchronized (this) {
-                    reconnecting = true;
                     running = false;
                     cancelReconnectTask();
                 }
@@ -160,7 +160,6 @@ public class TwitchClientManager {
             case "DISCONNECTED" -> {
                 running = false;
                 starting = false;
-                reconnecting = true;
                 scheduleSocketReconnect();
             }
             default -> {
@@ -240,7 +239,6 @@ public class TwitchClientManager {
         if (!shouldRun || (reconnectTask != null && !reconnectTask.isDone())) {
             return;
         }
-        reconnecting = true;
         reconnectTask = scheduler.schedule(() -> {
             synchronized (this) {
                 reconnectTask = null;
@@ -265,7 +263,6 @@ public class TwitchClientManager {
             shouldRun = false;
             running = false;
             starting = false;
-            reconnecting = false;
             lastError = null;
             cancelScheduledTasks();
         }
@@ -294,5 +291,4 @@ public class TwitchClientManager {
             revalidationRetryTask = null;
         }
     }
-
 }

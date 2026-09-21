@@ -8,46 +8,69 @@ architectury {
 }
 
 configurations {
-    common {
-        canBeResolved = true
-        canBeConsumed = false
-    }
+    common
     compileClasspath.extendsFrom common
     runtimeClasspath.extendsFrom common
     developmentNeoForge.extendsFrom common
-    shadowBundle {
-        canBeResolved = true
-        canBeConsumed = false
-    }
+    shadowBundle
 }
 
 repositories {
-    maven { url = 'https://maven.neoforged.net/releases' }
+    flatDir { dirs 'libs' }
+    maven { url = 'https://maven.neoforged.net/releases/' }
+    maven { url = 'https://thedarkcolour.github.io/KotlinForForge/' }
 }
 
 dependencies {
     neoForge "net.neoforged:neoforge:$rootProject.neoforge_version"
-    modImplementation "dev.architectury:architectury-neoforge:$rootProject.architectury_api_version"
-    modImplementation "thedarkcolour:kotlinforforge-neoforge:$rootProject.kotlin_for_forge_version"
-    modImplementation "com.cobblemon:neoforge:$rootProject.cobblemon_version"
-    implementation "com.github.twitch4j:twitch4j:$rootProject.twitch4j_version"
+    modImplementation ("com.cobblemon:neoforge:${rootProject.cobblemon_version}")
+    modRuntimeOnly "dev.architectury:architectury-neoforge:$rootProject.architectury_api_version"
+    modRuntimeOnly ("thedarkcolour:kotlinforforge-neoforge:${rootProject.kotlin_for_forge_version}") {
+        exclude group: "net.neoforged.fancymodloader", module: "loader"
+    }
+
+    // Architectury Loom does not expose KotlinForForge's nested Kotlin libraries to this dev runtime.
+    forgeRuntimeLibrary "org.jetbrains.kotlin:kotlin-stdlib:2.2.20"
+    forgeRuntimeLibrary "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.2.20"
+    forgeRuntimeLibrary "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.20"
+    forgeRuntimeLibrary "org.jetbrains.kotlin:kotlin-reflect:2.2.20"
+
+    forgeRuntimeLibrary "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2"
+    forgeRuntimeLibrary "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.10.2"
+
+    forgeRuntimeLibrary "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.9.0"
+    forgeRuntimeLibrary "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.9.0"
+
+    // Twitch4J is published inside the NeoForge mod as a nested library mod.
+    def twitch4jNeoForge = "local:twitch4j-neoforge:${rootProject.twitch4j_neoforge_version}"
+    modRuntimeOnly twitch4jNeoForge
+    include twitch4jNeoForge
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionNeoForge')
 }
 
 processResources {
-    inputs.property 'version', project.version
-    filesMatching('META-INF/neoforge.mods.toml') {
-        expand version: inputs.properties.version
-    }
+    def props = [
+            version                 : project.version,
+            minecraft_version       : rootProject.minecraft_version,
+            neoforge_version        : rootProject.neoforge_version,
+            architectury_api_version: rootProject.architectury_api_version,
+            cobblemon_version       : rootProject.cobblemon_version,
+            twitch4j_neoforge_version: rootProject.twitch4j_neoforge_version
+    ]
+    inputs.properties props
+    filesMatching('META-INF/neoforge.mods.toml') { expand props }
 }
 
 shadowJar {
+    exclude 'architectury.common.json'
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
 }
 
 remapJar {
     inputFile.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveClassifier = null
 }

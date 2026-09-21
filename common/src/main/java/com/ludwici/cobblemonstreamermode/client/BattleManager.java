@@ -3,7 +3,6 @@ package com.ludwici.cobblemonstreamermode.client;
 import java.util.List;
 
 public final class BattleManager {
-
     public static final BattleManager INSTANCE = new BattleManager();
 
     private volatile boolean currentStatus;
@@ -21,6 +20,7 @@ public final class BattleManager {
         if (!config.isStreamerModeEnabled() || !config.isVotingEnabled(action) || !currentStatus || options.isEmpty()) {
             return;
         }
+
         long votingDurationMs = config.getVotingDurationSeconds(action) * 1000L;
         currentPoll = new PollData(action, title, options, System.currentTimeMillis(), votingDurationMs);
     }

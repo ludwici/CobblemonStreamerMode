@@ -8,9 +8,3 @@ dependencies {
     modCompileOnly "com.cobblemon:mod:$rootProject.cobblemon_version"
     implementation "com.github.twitch4j:twitch4j:$rootProject.twitch4j_version"
 }
-
-processResources {
-    from(rootProject.file('src/main/resources/assets/cobblemon_streamer_mode/icon.png')) {
-        into 'assets/cobblemon_streamer_mode'
-    }
-}

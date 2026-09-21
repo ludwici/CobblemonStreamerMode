@@ -2,11 +2,14 @@ package com.ludwici.cobblemonstreamermode.client.twitch;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 import com.ludwici.cobblemonstreamermode.platform.PlatformPaths;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import static com.ludwici.cobblemonstreamermode.CobblemonStreamerMode.LOGGER;
 
 public final class TwitchCredentialStore {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -33,7 +36,8 @@ public final class TwitchCredentialStore {
                 deleteLegacyFile();
             }
             return credentials;
-        } catch (IOException e) {
+        } catch (IOException | JsonParseException e) {
+            LOGGER.warn("Failed to read Twitch credentials from {}", source, e);
             return null;
         }
     }
@@ -43,7 +47,7 @@ public final class TwitchCredentialStore {
             Files.createDirectories(FILE.getParent());
             Files.writeString(FILE, GSON.toJson(credentials));
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to save Twitch credentials to {}", FILE, e);
         }
     }
 

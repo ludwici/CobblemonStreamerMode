@@ -92,11 +92,7 @@ public class BattleGUIMixin {
 
     @Inject(method = "changeActionSelection", at = @At("TAIL"))
     private void changeAction(BattleActionSelection newSelection, CallbackInfo ci) {
-        if (newSelection == null) {
-            BattleManager.INSTANCE.cancelPoll();
-            return;
-        }
-        if (!StreamerModeConfig.INSTANCE.isStreamerModeEnabled()) {
+        if (newSelection == null || !StreamerModeConfig.INSTANCE.isStreamerModeEnabled()) {
             BattleManager.INSTANCE.cancelPoll();
             return;
         }

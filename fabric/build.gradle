@@ -8,17 +8,11 @@ architectury {
 }
 
 configurations {
-    common {
-        canBeResolved = true
-        canBeConsumed = false
-    }
+    common
     compileClasspath.extendsFrom common
     runtimeClasspath.extendsFrom common
     developmentFabric.extendsFrom common
-    shadowBundle {
-        canBeResolved = true
-        canBeConsumed = false
-    }
+    shadowBundle
 }
 
 dependencies {
@@ -36,15 +30,18 @@ dependencies {
 processResources {
     inputs.property 'version', project.version
     filesMatching('fabric.mod.json') {
-        expand version: inputs.properties.version
+        expand version: project.version
     }
 }
 
 shadowJar {
+    exclude 'architectury.common.json'
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
 }
 
 remapJar {
     inputFile.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveClassifier = null
 }
