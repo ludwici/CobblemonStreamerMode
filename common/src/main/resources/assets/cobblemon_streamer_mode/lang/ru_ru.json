@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Повторные голоса: ВКЛ",
   "cobblemonstreamermode.settings.repeat_votes_off": "Повторные голоса: ВЫКЛ",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Разрешить одному и тому же зрителю голосовать несколько раз",
-  "cobblemonstreamermode.section.voting": "Голосование"
+  "cobblemonstreamermode.section.voting": "Голосование",
+  "cobblemonstreamermode.settings.voting_audience": "Кто голосует",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Все зрители",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Фолловеры",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Подписчики",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Фолловеры или подписчики",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Проверка статуса зрителя в Twitch с кешем на 5 минут. Подарочные подписки учитываются.",
+  "cobblemonstreamermode.error.vote_lookup": "Не удалось проверить право голосования через Twitch."
 }

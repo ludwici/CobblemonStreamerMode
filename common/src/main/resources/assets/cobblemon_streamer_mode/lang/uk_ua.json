@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Повторні голоси: УВІМК",
   "cobblemonstreamermode.settings.repeat_votes_off": "Повторні голоси: ВИМК",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Дозволити одному й тому самому глядачеві голосувати кілька разів",
-  "cobblemonstreamermode.section.voting": "Голосування"
+  "cobblemonstreamermode.section.voting": "Голосування",
+  "cobblemonstreamermode.settings.voting_audience": "Хто голосує",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Усі глядачі",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Фоловери",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Платні підписники",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Фоловери або підписники",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Перевірка статусу через Twitch із кешем на 5 хвилин. Подарункові підписки враховуються.",
+  "cobblemonstreamermode.error.vote_lookup": "Не вдалося перевірити право голосу через Twitch."
 }

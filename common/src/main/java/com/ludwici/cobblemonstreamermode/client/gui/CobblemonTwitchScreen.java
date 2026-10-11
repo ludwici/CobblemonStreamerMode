@@ -5,6 +5,7 @@ import com.ludwici.cobblemonstreamermode.client.PollData;
 import com.ludwici.cobblemonstreamermode.client.StreamerModeConfig;
 import com.ludwici.cobblemonstreamermode.client.twitch.TwitchAuthManager;
 import com.ludwici.cobblemonstreamermode.client.twitch.TwitchClientManager;
+import com.ludwici.cobblemonstreamermode.client.twitch.TwitchVoteEligibility;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -59,6 +60,7 @@ public class CobblemonTwitchScreen extends Screen {
         settingsList.add(new SectionEntry(Component.translatable("cobblemonstreamermode.section.mode")));
         settingsList.add(new StreamerModeEntry());
         settingsList.add(new SectionEntry(Component.translatable("cobblemonstreamermode.section.voting")));
+        settingsList.add(new VotingAudienceEntry());
         settingsList.add(new VotingEntry(PollData.Actions.MOVE, Component.translatable("cobblemonstreamermode.settings.battle.move")));
         settingsList.add(new VotingEntry(PollData.Actions.TARGET, Component.translatable("cobblemonstreamermode.settings.battle.target")));
         settingsList.add(new VotingEntry(PollData.Actions.SWITCH_POKEMON, Component.translatable("cobblemonstreamermode.settings.battle.switch")));
@@ -276,6 +278,9 @@ public class CobblemonTwitchScreen extends Screen {
 
             graphics.drawString(font, firstLine, left + 10, top + 8, color, false);
             String error = auth.getLastError() != null ? auth.getLastError() : client.getLastError();
+            if (error == null) {
+                error = TwitchVoteEligibility.INSTANCE.getLastError();
+            }
             if (error != null && !error.isBlank()) {
                 secondLine = Component.translatable("cobblemonstreamermode.error", compact(error, 42));
                 graphics.drawString(font, secondLine, left + 10, top + 23, STATUS_ERROR, false);
@@ -384,6 +389,36 @@ public class CobblemonTwitchScreen extends Screen {
 
     }
 
+    private final class VotingAudienceEntry extends SettingsEntry {
+        private final Button button;
+
+        private VotingAudienceEntry() {
+            this(Button.builder(Component.empty(), btn -> {
+                        StreamerModeConfig config = StreamerModeConfig.INSTANCE;
+                        config.setVotingAudience(config.getVotingAudience().next());
+                        updateVotingAudienceMessage((Button) btn);
+                    })
+                    .tooltip(Tooltip.create(Component.translatable("cobblemonstreamermode.settings.voting_audience.tooltip")))
+                    .bounds(0, 0, 205, BUTTON_HEIGHT)
+                    .build());
+        }
+
+        private VotingAudienceEntry(Button button) {
+            super(button);
+            this.button = button;
+        }
+
+        @Override
+        public void render(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovering, float partialTick) {
+            drawRowBackground(graphics, left, top, width, height);
+            graphics.drawString(font, Component.translatable("cobblemonstreamermode.settings.voting_audience"), left + 10, top + 16, TEXT_PRIMARY, false);
+            updateVotingAudienceMessage(button);
+            button.setX(left + width - button.getWidth() - 10);
+            button.setY(top + 10);
+            button.render(graphics, mouseX, mouseY, partialTick);
+        }
+    }
+
     private final class VotingEntry extends SettingsEntry {
         private final PollData.Actions action;
         private final Component label;
@@ -487,6 +522,16 @@ public class CobblemonTwitchScreen extends Screen {
                 StreamerModeConfig.INSTANCE.isAllowRepeatVotes()
                         ? "cobblemonstreamermode.settings.repeat_votes_on"
                         : "cobblemonstreamermode.settings.repeat_votes_off"));
+    }
+
+    private static void updateVotingAudienceMessage(Button button) {
+        String key = switch (StreamerModeConfig.INSTANCE.getVotingAudience()) {
+            case EVERYONE -> "everyone";
+            case FOLLOWERS -> "followers";
+            case SUBSCRIBERS -> "subscribers";
+            case FOLLOWERS_OR_SUBSCRIBERS -> "followers_or_subscribers";
+        };
+        button.setMessage(Component.translatable("cobblemonstreamermode.settings.voting_audience." + key));
     }
 
     private static void updateToggleMessage(Button button, PollData.Actions action) {

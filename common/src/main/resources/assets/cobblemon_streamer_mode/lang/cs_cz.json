@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Opakované hlasy: ZAP",
   "cobblemonstreamermode.settings.repeat_votes_off": "Opakované hlasy: VYP",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Povolit stejnému divákovi hlasovat vícekrát",
-  "cobblemonstreamermode.section.voting": "Hlasování"
+  "cobblemonstreamermode.section.voting": "Hlasování",
+  "cobblemonstreamermode.settings.voting_audience": "Kdo může hlasovat",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Všichni",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Sledující",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Předplatitelé",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Sledující nebo předplatitelé",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Stav na Twitchi se ukládá na 5 minut. Darovaná předplatná se počítají.",
+  "cobblemonstreamermode.error.vote_lookup": "Nepodařilo se ověřit oprávnění k hlasování."
 }

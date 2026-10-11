@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Mehrfachstimmen: AN",
   "cobblemonstreamermode.settings.repeat_votes_off": "Mehrfachstimmen: AUS",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Derselbe Zuschauer darf mehrmals abstimmen",
-  "cobblemonstreamermode.section.voting": "Abstimmung"
+  "cobblemonstreamermode.section.voting": "Abstimmung",
+  "cobblemonstreamermode.settings.voting_audience": "Wer darf abstimmen",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Alle",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Follower",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Abonnenten",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Follower oder Abonnenten",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Twitch-Status wird geprüft und 5 Minuten gespeichert. Geschenkabos zählen.",
+  "cobblemonstreamermode.error.vote_lookup": "Twitch-Abstimmberechtigung konnte nicht geprüft werden."
 }

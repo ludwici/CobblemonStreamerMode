@@ -1,5 +1,7 @@
 package com.ludwici.cobblemonstreamermode.client;
 
+import com.ludwici.cobblemonstreamermode.client.twitch.TwitchVoteEligibility;
+
 import java.util.List;
 
 public final class BattleManager {
@@ -25,26 +27,48 @@ public final class BattleManager {
         currentPoll = new PollData(action, title, options, System.currentTimeMillis(), votingDurationMs);
     }
 
-    public synchronized void submitChatMessage(String userId, String message) {
-        if (!StreamerModeConfig.INSTANCE.isStreamerModeEnabled() || !currentStatus || currentPoll == null) {
+    public void submitChatMessage(String userId, String message) {
+        if (userId == null || userId.isBlank() || message == null || !message.trim().matches("\\d+")) {
             return;
         }
 
-        String trimmed = message.trim();
-        if (!trimmed.matches("\\d+")) {
-            return;
-        }
-
+        int optionNumber;
         try {
-            int optionNumber = Integer.parseInt(trimmed);
-            currentPoll.vote(
-                    userId,
-                    optionNumber,
-                    StreamerModeConfig.INSTANCE.isAllowRepeatVotes(),
-                    System.currentTimeMillis()
-            );
+            optionNumber = Integer.parseInt(message.trim());
         } catch (NumberFormatException ignored) {
+            return;
         }
+
+        PollData poll;
+        StreamerModeConfig.VotingAudience audience;
+        synchronized (this) {
+            if (!StreamerModeConfig.INSTANCE.isStreamerModeEnabled() || !currentStatus || currentPoll == null) {
+                return;
+            }
+            poll = currentPoll;
+            if (!poll.isAcceptingVotes(optionNumber, System.currentTimeMillis())) {
+                return;
+            }
+            audience = StreamerModeConfig.INSTANCE.getVotingAudience();
+        }
+
+        if (audience == StreamerModeConfig.VotingAudience.EVERYONE) {
+            acceptVote(poll, audience, userId, optionNumber);
+        } else {
+            TwitchVoteEligibility.INSTANCE.check(userId, audience).thenAccept(allowed -> {
+                if (allowed) {
+                    acceptVote(poll, audience, userId, optionNumber);
+                }
+            });
+        }
+    }
+
+    private synchronized void acceptVote(PollData poll, StreamerModeConfig.VotingAudience audience, String userId, int optionNumber) {
+        StreamerModeConfig config = StreamerModeConfig.INSTANCE;
+        if (currentPoll != poll || !currentStatus || !config.isStreamerModeEnabled() || !config.isVotingEnabled(poll.getCurrentAction()) || config.getVotingAudience() != audience) {
+            return;
+        }
+        poll.vote(userId, optionNumber, config.isAllowRepeatVotes(), System.currentTimeMillis());
     }
 
     public void tick() {

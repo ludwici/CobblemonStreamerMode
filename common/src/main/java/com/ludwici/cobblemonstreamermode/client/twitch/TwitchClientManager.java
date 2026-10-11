@@ -186,6 +186,7 @@ public final class TwitchClientManager {
 
         TwitchAuthManager.INSTANCE.getValidCredentials(
                 credentials -> {
+                    TwitchVoteEligibility.INSTANCE.updateCredentials(credentials);
                     revalidating.set(false);
                     synchronized (this) {
                         cancelRevalidationRetryTask();

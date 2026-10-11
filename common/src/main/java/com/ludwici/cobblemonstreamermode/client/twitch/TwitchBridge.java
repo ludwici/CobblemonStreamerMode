@@ -23,13 +23,15 @@ public final class TwitchBridge {
         }
 
         stop();
-
         OAuth2Credential chatCredential = new OAuth2Credential("twitch", credentials.accessToken);
         twitchClient = TwitchClientBuilder.builder()
                 .withEnableChat(true)
+                .withEnableHelix(true)
+                .withClientId(TwitchAuthManager.CLIENT_ID)
                 .withChatAccount(chatCredential)
                 .build();
 
+        TwitchVoteEligibility.INSTANCE.start(credentials, twitchClient.getHelix());
         twitchClient.getEventManager().onEvent(ChannelMessageEvent.class, event -> BattleManager.INSTANCE.submitChatMessage(event.getUser().getId(), event.getMessage()));
         twitchClient.getEventManager().onEvent(ChatConnectionStateEvent.class, event -> TwitchClientManager.INSTANCE.onChatConnectionState(event.getState().name()));
         twitchClient.getChat().joinChannel(credentials.channelName);
@@ -47,6 +49,7 @@ public final class TwitchBridge {
     }
 
     public static synchronized void stop() {
+        TwitchVoteEligibility.INSTANCE.stop();
         if (twitchClient == null) {
             return;
         }

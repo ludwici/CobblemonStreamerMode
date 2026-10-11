@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "複数投票：オン",
   "cobblemonstreamermode.settings.repeat_votes_off": "複数投票：オフ",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "同じ視聴者が複数回投票できるようにする",
-  "cobblemonstreamermode.section.voting": "投票"
+  "cobblemonstreamermode.section.voting": "投票",
+  "cobblemonstreamermode.settings.voting_audience": "投票できる人",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "全員",
+  "cobblemonstreamermode.settings.voting_audience.followers": "フォロワー",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "サブスクライバー",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "フォロワーまたはサブスク",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Twitchの状態は5分間キャッシュします。ギフトサブスクも対象です。",
+  "cobblemonstreamermode.error.vote_lookup": "Twitchの投票資格を確認できませんでした。"
 }

@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Repeat votes: ON",
   "cobblemonstreamermode.settings.repeat_votes_off": "Repeat votes: OFF",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Allow the same viewer to vote multiple times",
-  "cobblemonstreamermode.section.voting": "Voting"
+  "cobblemonstreamermode.section.voting": "Voting",
+  "cobblemonstreamermode.settings.voting_audience": "Who can vote",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Everyone",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Followers",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Subscribers",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Followers or subs",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Checks Twitch membership for each viewer, cached for 5 minutes. Gift subscriptions count.",
+  "cobblemonstreamermode.error.vote_lookup": "Unable to verify Twitch voting eligibility."
 }

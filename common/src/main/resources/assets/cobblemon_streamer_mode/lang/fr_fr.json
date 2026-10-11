@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Votes répétés : ACTIVÉS",
   "cobblemonstreamermode.settings.repeat_votes_off": "Votes répétés : DÉSACTIVÉS",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Autoriser un même spectateur à voter plusieurs fois",
-  "cobblemonstreamermode.section.voting": "Vote"
+  "cobblemonstreamermode.section.voting": "Vote",
+  "cobblemonstreamermode.settings.voting_audience": "Qui peut voter",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Tout le monde",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Followers",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Abonnés",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Followers ou abonnés",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Statut Twitch mis en cache 5 minutes. Les abonnements offerts comptent.",
+  "cobblemonstreamermode.error.vote_lookup": "Impossible de vérifier les droits de vote Twitch."
 }

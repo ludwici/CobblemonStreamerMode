@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -34,8 +35,11 @@ public final class TwitchAuthManager {
     private volatile String authorizedChannelName;
     private volatile Component lastError;
 
-    private static final String CLIENT_ID = "3lsck8o6uuez43dqpu96zaycj7b5ra";
-    public static final String SCOPES = "chat:read";
+    public static final String CLIENT_ID = "3lsck8o6uuez43dqpu96zaycj7b5ra";
+    public static final String FOLLOWERS_SCOPE = "moderator:read:followers";
+    public static final String SUBSCRIBERS_SCOPE = "channel:read:subscriptions";
+
+    private static final String AUTH_SCOPES = "chat:read " + FOLLOWERS_SCOPE + " " + SUBSCRIBERS_SCOPE;
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(runnable -> {
         Thread thread = new Thread(runnable, "cobblemon-streamer-mode-twitch-auth");
@@ -68,12 +72,16 @@ public final class TwitchAuthManager {
 
     public void refreshStatusFromDisk() {
         TwitchCredentials creds = TwitchCredentialStore.load();
-        boolean hasRefreshToken = creds != null && creds.refreshToken != null && !creds.refreshToken.isBlank();
-        authStatus = hasRefreshToken ? AuthStatus.VALID : AuthStatus.NOT_AUTHORIZED;
-        authorizedChannelName = hasRefreshToken ? creds.channelName : null;
-        if (!hasRefreshToken) {
+        boolean authorized = creds != null && creds.refreshToken != null && !creds.refreshToken.isBlank() && hasRequiredScopes(creds);
+        authStatus = authorized ? AuthStatus.VALID : AuthStatus.NOT_AUTHORIZED;
+        authorizedChannelName = authorized ? creds.channelName : null;
+        if (!authorized) {
             lastError = null;
         }
+    }
+
+    private static boolean hasRequiredScopes(TwitchCredentials creds) {
+        return creds.hasScope("chat:read") && creds.hasScope(FOLLOWERS_SCOPE) && creds.hasScope(SUBSCRIBERS_SCOPE);
     }
 
     public void beginDeviceFlow() {
@@ -81,7 +89,7 @@ public final class TwitchAuthManager {
         pendingVerificationUri = null;
         authStatus = AuthStatus.PENDING;
 
-        String body = "client_id=" + CLIENT_ID + "&scopes=" + URLEncoder.encode(SCOPES, StandardCharsets.UTF_8);
+        String body = "client_id=" + CLIENT_ID + "&scopes=" + URLEncoder.encode(AUTH_SCOPES, StandardCharsets.UTF_8);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://id.twitch.tv/oauth2/device"))
@@ -156,6 +164,10 @@ public final class TwitchAuthManager {
             }
             int expiresIn = json.get("expires_in").getAsInt();
             creds.expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + expiresIn;
+            if (json.has("scope") && json.get("scope").isJsonArray()) {
+                creds.scopes = new ArrayList<>();
+                json.getAsJsonArray("scope").forEach(scope -> creds.scopes.add(scope.getAsString()));
+            }
             TwitchCredentialStore.save(creds);
             onDone.accept(creds);
         }).exceptionally(ex -> {
@@ -170,7 +182,7 @@ public final class TwitchAuthManager {
     public void getValidCredentials(Consumer<TwitchCredentials> onReady, Runnable onNeedAuth, Consumer<Component> onTransientError) {
         TwitchCredentials creds = TwitchCredentialStore.load();
 
-        if (creds == null || creds.refreshToken == null || creds.refreshToken.isBlank()) {
+        if (creds == null || creds.refreshToken == null || creds.refreshToken.isBlank() || !hasRequiredScopes(creds)) {
             authStatus = AuthStatus.NOT_AUTHORIZED;
             authorizedChannelName = null;
             lastError = null;
@@ -232,11 +244,20 @@ public final class TwitchAuthManager {
                 return;
             }
 
+            if (json.has("scopes") && json.get("scopes").isJsonArray()) {
+                creds.scopes = new ArrayList<>();
+                json.getAsJsonArray("scopes").forEach(scope -> creds.scopes.add(scope.getAsString()));
+            }
             creds.channelId = json.get("user_id").getAsString();
             creds.channelName = json.get("login").getAsString();
             authorizedChannelName = creds.channelName;
             creds.expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + json.get("expires_in").getAsInt();
             TwitchCredentialStore.save(creds);
+            if (!hasRequiredScopes(creds)) {
+                lastError = Component.translatable("cobblemonstreamermode.error.authorization_failed");
+                onUnauthorized.run();
+                return;
+            }
             authStatus = AuthStatus.VALID;
             lastError = null;
             onReady.accept(creds);
@@ -274,7 +295,7 @@ public final class TwitchAuthManager {
             }
 
             String body = "client_id=" + CLIENT_ID
-                    + "&scopes=" + URLEncoder.encode(SCOPES, StandardCharsets.UTF_8)
+                    + "&scopes=" + URLEncoder.encode(AUTH_SCOPES, StandardCharsets.UTF_8)
                     + "&device_code=" + deviceCode
                     + "&grant_type=urn:ietf:params:oauth:grant-type:device_code";
 
@@ -325,12 +346,17 @@ public final class TwitchAuthManager {
         creds.refreshToken = json.get("refresh_token").getAsString();
         int expiresIn = json.get("expires_in").getAsInt();
         creds.expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + expiresIn;
+        if (json.has("scope") && json.get("scope").isJsonArray()) {
+            creds.scopes = new ArrayList<>();
+            json.getAsJsonArray("scope").forEach(scope -> creds.scopes.add(scope.getAsString()));
+        }
         TwitchCredentialStore.save(creds);
 
         validateCredentials(
                 creds,
                 validated -> {
                     if (StreamerModeConfig.INSTANCE.isStreamerModeEnabled()) {
+                        TwitchClientManager.INSTANCE.stop();
                         TwitchClientManager.INSTANCE.start(validated);
                     }
                 },

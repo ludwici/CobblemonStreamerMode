@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Tekrarlı oylar: AÇIK",
   "cobblemonstreamermode.settings.repeat_votes_off": "Tekrarlı oylar: KAPALI",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Aynı izleyicinin birden fazla kez oy vermesine izin ver",
-  "cobblemonstreamermode.section.voting": "Oylama"
+  "cobblemonstreamermode.section.voting": "Oylama",
+  "cobblemonstreamermode.settings.voting_audience": "Kim oy verebilir",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Herkes",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Takipçiler",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Aboneler",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Takipçiler veya aboneler",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Twitch durumu 5 dakika önbellekte tutulur. Hediye abonelikler sayılır.",
+  "cobblemonstreamermode.error.vote_lookup": "Twitch oy verme izni doğrulanamadı."
 }

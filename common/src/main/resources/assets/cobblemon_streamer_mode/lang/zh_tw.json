@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "重複投票：開啟",
   "cobblemonstreamermode.settings.repeat_votes_off": "重複投票：關閉",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "允許同一位觀眾多次投票",
-  "cobblemonstreamermode.section.voting": "投票"
+  "cobblemonstreamermode.section.voting": "投票",
+  "cobblemonstreamermode.settings.voting_audience": "誰可以投票",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "所有觀眾",
+  "cobblemonstreamermode.settings.voting_audience.followers": "追隨者",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "訂閱者",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "追隨者或訂閱者",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Twitch 身分檢查快取 5 分鐘，贈送的訂閱也有效。",
+  "cobblemonstreamermode.error.vote_lookup": "無法驗證 Twitch 投票資格。"
 }

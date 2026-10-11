@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "중복 투표: 켜짐",
   "cobblemonstreamermode.settings.repeat_votes_off": "중복 투표: 꺼짐",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "같은 시청자가 여러 번 투표하도록 허용",
-  "cobblemonstreamermode.section.voting": "투표"
+  "cobblemonstreamermode.section.voting": "투표",
+  "cobblemonstreamermode.settings.voting_audience": "투표할 수 있는 사람",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "모든 시청자",
+  "cobblemonstreamermode.settings.voting_audience.followers": "팔로워",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "구독자",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "팔로워 또는 구독자",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Twitch 상태를 5분 동안 캐시합니다. 선물 구독도 포함됩니다.",
+  "cobblemonstreamermode.error.vote_lookup": "Twitch 투표 자격을 확인할 수 없습니다."
 }

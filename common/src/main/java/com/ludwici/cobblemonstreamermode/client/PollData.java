@@ -41,8 +41,12 @@ public final class PollData {
         return currentAction;
     }
 
+    public synchronized boolean isAcceptingVotes(int optionNumber, long nowMs) {
+        return !finished && nowMs < votingEndsAtMs && optionNumber >= 1 && optionNumber <= options.size();
+    }
+
     public synchronized boolean vote(String userId, int optionNumber, boolean allowRepeatVotes, long nowMs) {
-        if (finished || nowMs >= votingEndsAtMs || optionNumber < 1 || optionNumber > options.size()) {
+        if (!isAcceptingVotes(optionNumber, nowMs)) {
             return false;
         }
         if (!allowRepeatVotes && !voters.add(userId)) {

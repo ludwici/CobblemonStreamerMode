@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Powtórne głosy: WŁ",
   "cobblemonstreamermode.settings.repeat_votes_off": "Powtórne głosy: WYŁ",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Pozwól temu samemu widzowi głosować wiele razy",
-  "cobblemonstreamermode.section.voting": "Głosowanie"
+  "cobblemonstreamermode.section.voting": "Głosowanie",
+  "cobblemonstreamermode.settings.voting_audience": "Kto może głosować",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Wszyscy",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Obserwujący",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Subskrybenci",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Obserwujący lub subskrybenci",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Status Twitch jest zapisywany na 5 minut. Podarowane subskrypcje się liczą.",
+  "cobblemonstreamermode.error.vote_lookup": "Nie udało się sprawdzić uprawnień do głosowania."
 }

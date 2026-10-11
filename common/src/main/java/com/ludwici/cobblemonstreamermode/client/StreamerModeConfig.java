@@ -29,6 +29,28 @@ public final class StreamerModeConfig {
         load();
     }
 
+    public enum VotingAudience {
+        EVERYONE,
+        FOLLOWERS,
+        SUBSCRIBERS,
+        FOLLOWERS_OR_SUBSCRIBERS;
+
+        public VotingAudience next() {
+            VotingAudience[] values = values();
+            return values[(ordinal() + 1) % values.length];
+        }
+    }
+
+    public synchronized VotingAudience getVotingAudience() {
+        VotingAudience audience = currentPlayerSettings().votingAudience;
+        return audience == null ? VotingAudience.EVERYONE : audience;
+    }
+
+    public synchronized void setVotingAudience(VotingAudience audience) {
+        currentPlayerSettings().votingAudience = audience;
+        save();
+    }
+
     public synchronized boolean isAllowRepeatVotes() {
         return currentPlayerSettings().allowRepeatVotes;
     }
@@ -124,6 +146,9 @@ public final class StreamerModeConfig {
     }
 
     private void normalize(PlayerSettings settings) {
+        if (settings.votingAudience == null) {
+            settings.votingAudience = VotingAudience.EVERYONE;
+        }
         if (settings.voting == null) {
             settings.voting = new VotingSettings();
         }
@@ -197,6 +222,7 @@ public final class StreamerModeConfig {
 
     private static final class PlayerSettings {
         private boolean allowRepeatVotes;
+        private VotingAudience votingAudience = VotingAudience.EVERYONE;
         private boolean streamerModeEnabled = true;
         private VotingSettings voting = new VotingSettings();
     }

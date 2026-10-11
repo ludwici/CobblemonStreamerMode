@@ -47,5 +47,12 @@
   "cobblemonstreamermode.settings.repeat_votes_on": "Votos repetidos: LIG",
   "cobblemonstreamermode.settings.repeat_votes_off": "Votos repetidos: DESL",
   "cobblemonstreamermode.settings.repeat_votes.tooltip": "Permitir que o mesmo espectador vote várias vezes",
-  "cobblemonstreamermode.section.voting": "Votação"
+  "cobblemonstreamermode.section.voting": "Votação",
+  "cobblemonstreamermode.settings.voting_audience": "Quem pode votar",
+  "cobblemonstreamermode.settings.voting_audience.everyone": "Todos",
+  "cobblemonstreamermode.settings.voting_audience.followers": "Seguidores",
+  "cobblemonstreamermode.settings.voting_audience.subscribers": "Inscritos",
+  "cobblemonstreamermode.settings.voting_audience.followers_or_subscribers": "Seguidores ou inscritos",
+  "cobblemonstreamermode.settings.voting_audience.tooltip": "Status na Twitch em cache por 5 minutos. Inscrições presenteadas contam.",
+  "cobblemonstreamermode.error.vote_lookup": "Não foi possível verificar a permissão de voto."
 }
