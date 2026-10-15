@@ -41,6 +41,27 @@ public final class StreamerModeConfig {
         }
     }
 
+    public record PollPanelPosition(int x, int y) {
+    }
+
+    public synchronized PollPanelPosition getPollPanelPosition() {
+        PlayerSettings settings = currentPlayerSettings();
+        if (settings.pollPanelX == null || settings.pollPanelY == null) {
+            return null;
+        }
+        return new PollPanelPosition(settings.pollPanelX, settings.pollPanelY);
+    }
+
+    public synchronized void setPollPanelPosition(int x, int y) {
+        PlayerSettings settings = currentPlayerSettings();
+        if (java.util.Objects.equals(settings.pollPanelX, x) && java.util.Objects.equals(settings.pollPanelY, y)) {
+            return;
+        }
+        settings.pollPanelX = x;
+        settings.pollPanelY = y;
+        save();
+    }
+
     public synchronized VotingAudience getVotingAudience() {
         VotingAudience audience = currentPlayerSettings().votingAudience;
         return audience == null ? VotingAudience.EVERYONE : audience;
@@ -223,6 +244,8 @@ public final class StreamerModeConfig {
     private static final class PlayerSettings {
         private boolean allowRepeatVotes;
         private VotingAudience votingAudience = VotingAudience.EVERYONE;
+        private Integer pollPanelX;
+        private Integer pollPanelY;
         private boolean streamerModeEnabled = true;
         private VotingSettings voting = new VotingSettings();
     }

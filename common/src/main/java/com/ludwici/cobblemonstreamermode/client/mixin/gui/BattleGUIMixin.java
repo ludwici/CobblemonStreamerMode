@@ -12,7 +12,9 @@ import com.ludwici.cobblemonstreamermode.client.twitch.TwitchClientManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -28,18 +30,34 @@ public class BattleGUIMixin {
     private static final int OPTION_HEIGHT = 14;
     private static final int PROGRESS_HEIGHT = 6;
 
+    @Unique private boolean csm$positionInitialized;
+    @Unique private boolean csm$customPosition;
+    @Unique private boolean csm$dragging;
+    @Unique private boolean csm$dragMoved;
+    @Unique private int csm$panelX;
+    @Unique private int csm$panelY;
+    @Unique private double csm$dragOffsetX;
+    @Unique private double csm$dragOffsetY;
+
     @Inject(method = "render", at = @At("TAIL"))
     private void renderPoll(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         PollData.Snapshot snapshot = BattleManager.INSTANCE.getPollSnapshot();
         if (snapshot == null) {
+            csm$finishDrag();
             return;
         }
 
         Minecraft minecraft = Minecraft.getInstance();
-        int contentHeight = 50 + snapshot.options().size() * OPTION_HEIGHT + 18 + PROGRESS_HEIGHT;
-        int panelHeight = contentHeight + PANEL_PADDING * 2;
-        int x = minecraft.getWindow().getGuiScaledWidth() - PANEL_WIDTH - 12;
-        int y = Math.max(12, (minecraft.getWindow().getGuiScaledHeight() - panelHeight) / 2);
+        int panelHeight = csm$getPanelHeight(snapshot);
+        csm$ensurePosition(minecraft, panelHeight);
+        if (csm$dragging) {
+            csm$updateDrag(mouseX, mouseY, minecraft, panelHeight);
+            if (GLFW.glfwGetMouseButton(minecraft.getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
+                csm$finishDrag();
+            }
+        }
+        int x = csm$panelX;
+        int y = csm$panelY;
 
         graphics.fill(x, y, x + PANEL_WIDTH, y + panelHeight, 0xDD0F1018);
         graphics.fill(x + 1, y + 1, x + PANEL_WIDTH - 1, y + panelHeight - 1, 0xCC1B1D2B);
@@ -76,6 +94,52 @@ public class BattleGUIMixin {
         }
     }
 
+    @Unique
+    private static int csm$getPanelHeight(PollData.Snapshot snapshot) {
+        return 50 + snapshot.options().size() * OPTION_HEIGHT + 18 + PROGRESS_HEIGHT + PANEL_PADDING * 2;
+    }
+
+    @Unique
+    private void csm$ensurePosition(Minecraft minecraft, int panelHeight) {
+        if (!csm$positionInitialized) {
+            StreamerModeConfig.PollPanelPosition position = StreamerModeConfig.INSTANCE.getPollPanelPosition();
+            if (position != null) {
+                csm$panelX = position.x();
+                csm$panelY = position.y();
+                csm$customPosition = true;
+            }
+            csm$positionInitialized = true;
+        }
+        if (!csm$customPosition) {
+            csm$panelX = minecraft.getWindow().getGuiScaledWidth() - PANEL_WIDTH - 12;
+            csm$panelY = Math.max(12, (minecraft.getWindow().getGuiScaledHeight() - panelHeight) / 2);
+        }
+        csm$panelX = Math.clamp(csm$panelX, 0, Math.max(0, minecraft.getWindow().getGuiScaledWidth() - PANEL_WIDTH));
+        csm$panelY = Math.clamp(csm$panelY, 0, Math.max(0, minecraft.getWindow().getGuiScaledHeight() - panelHeight));
+    }
+
+    @Unique
+    private void csm$updateDrag(double mouseX, double mouseY, Minecraft minecraft, int panelHeight) {
+        int nextX = Math.clamp((int) Math.round(mouseX - csm$dragOffsetX), 0, Math.max(0, minecraft.getWindow().getGuiScaledWidth() - PANEL_WIDTH));
+        int nextY = Math.clamp((int) Math.round(mouseY - csm$dragOffsetY), 0, Math.max(0, minecraft.getWindow().getGuiScaledHeight() - panelHeight));
+        if (nextX != csm$panelX || nextY != csm$panelY) {
+            csm$dragMoved = true;
+        }
+        csm$panelX = nextX;
+        csm$panelY = nextY;
+    }
+
+    @Unique
+    private void csm$finishDrag() {
+        if (csm$dragging) {
+            csm$dragging = false;
+            if (csm$dragMoved) {
+                csm$customPosition = true;
+                StreamerModeConfig.INSTANCE.setPollPanelPosition(csm$panelX, csm$panelY);
+            }
+        }
+    }
+
     private static int progressColor(float progress) {
         float clamped = Math.clamp(progress, 0F, 1F);
         int red = Math.round(255F * (1F - clamped));
@@ -85,9 +149,39 @@ public class BattleGUIMixin {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void blockManualBattleChoice(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        PollData.Snapshot snapshot = BattleManager.INSTANCE.getPollSnapshot();
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && snapshot != null) {
+            Minecraft minecraft = Minecraft.getInstance();
+            int panelHeight = csm$getPanelHeight(snapshot);
+            csm$ensurePosition(minecraft, panelHeight);
+            if (mouseX >= csm$panelX && mouseX < csm$panelX + PANEL_WIDTH && mouseY >= csm$panelY && mouseY < csm$panelY + panelHeight) {
+                csm$dragOffsetX = mouseX - csm$panelX;
+                csm$dragOffsetY = mouseY - csm$panelY;
+                csm$dragging = true;
+                csm$dragMoved = false;
+                cir.setReturnValue(true);
+                return;
+            }
+        }
         if (BattleManager.INSTANCE.isPollBlockingInput()) {
             cir.setReturnValue(true);
         }
+    }
+
+    @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
+    private void dragPoll(double mouseX, double mouseY, int button, double deltaX, double deltaY, CallbackInfoReturnable<Boolean> cir) {
+        if (csm$dragging && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            PollData.Snapshot snapshot = BattleManager.INSTANCE.getPollSnapshot();
+            if (snapshot != null) {
+                csm$updateDrag(mouseX, mouseY, Minecraft.getInstance(), csm$getPanelHeight(snapshot));
+            }
+            cir.setReturnValue(true);
+        }
+    }
+
+    @Inject(method = "onClose", at = @At("HEAD"))
+    private void savePollPositionOnClose(CallbackInfo ci) {
+        csm$finishDrag();
     }
 
     @Inject(method = "changeActionSelection", at = @At("TAIL"))
