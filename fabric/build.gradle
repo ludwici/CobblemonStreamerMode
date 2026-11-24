@@ -25,6 +25,10 @@ dependencies {
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
+    shadowBundle("com.github.twitch4j:twitch4j:$rootProject.twitch4j_version") {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+        exclude group: 'org.jetbrains.kotlin'
+    }
 }
 
 processResources {
@@ -36,6 +40,7 @@ processResources {
 
 shadowJar {
     exclude 'architectury.common.json'
+    mergeServiceFiles()
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
 }
