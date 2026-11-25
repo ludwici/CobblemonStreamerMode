@@ -1,0 +1,33 @@
+plugins {
+    id 'me.modmuss50.mod-publish-plugin' version '2.2.1'
+}
+
+def modProperties = new Properties()
+file('../gradle.properties').withInputStream { modProperties.load(it) }
+
+def modVersion = modProperties.getProperty('mod_version')
+def minecraftVersion = modProperties.getProperty('minecraft_version')
+def artifactName = "${modProperties.getProperty('archives_name')}-fabric-${modVersion}.jar"
+
+publishMods {
+    file = layout.projectDirectory.file("artifacts/${artifactName}")
+    changelog = ""
+    version = modVersion
+    displayName = artifactName
+    type = STABLE
+    modLoaders.add("fabric")
+    dryRun = providers.gradleProperty("publishDryRun").map { it.toBoolean() }.orElse(false)
+
+    curseforge {
+        projectId = "1705133"
+        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN").orElse(providers.gradleProperty("CURSEFORGE_TOKEN"))
+        minecraftVersions.add(minecraftVersion)
+        javaVersions.add(JavaVersion.VERSION_21)
+        client = true
+        server = true
+        requires("cobblemon")
+        requires("architectury-api")
+        requires("fabric-api")
+        requires("fabric-language-kotlin")
+    }
+}
